@@ -35,14 +35,17 @@ public class JdbcConnection {
     }
 
     private String getDatabaseDirectory() {
-        return System.getProperty("catalina.base");
+        String directory = System.getProperty("catalina.base");
+        log.trace("Loading database from file: " + directory);
+
+        return directory;
     }
 
     private Connection getConnection(String dbName) {
         Connection connection = null;
         try {
             Class.forName("org.sqlite.JDBC");
-            connection = DriverManager.getConnection("jdbc:sqlite:/" + new File(getDatabaseDirectory(), dbName).getAbsolutePath());
+            connection = DriverManager.getConnection("jdbc:sqlite:/" + new File(getDatabaseDirectory(), "db/" +  dbName).getAbsolutePath());
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         }
