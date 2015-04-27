@@ -39,7 +39,9 @@ public class SettingsDao {
         Connection connection = null;
         Statement statement = null;
         try {
+            connection = guiJdbcConnection.getConnection();
             statement = connection.createStatement();
+
             String update = "DELETE FROM SETTINGS";
             statement.executeUpdate(update);
 

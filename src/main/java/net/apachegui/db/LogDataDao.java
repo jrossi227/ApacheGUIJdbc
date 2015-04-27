@@ -33,10 +33,9 @@ public class LogDataDao {
         Connection connection = null;
         Statement statement = null;
         try {
-
             connection = logDataJdbcConnection.getConnection();
-
             statement = connection.createStatement();
+
             String update = "DELETE FROM LOGDATA";
             statement.executeUpdate(update);
 
