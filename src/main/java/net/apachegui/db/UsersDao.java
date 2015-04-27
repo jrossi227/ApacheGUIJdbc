@@ -14,6 +14,7 @@ public class UsersDao {
     private static final String USERS_TABLE = "USERS";
     private static final String ROLES_TABLE = "USER_ROLES";
 
+
     private static UsersDao instance = null;
 
     public static UsersDao getInstance() {
@@ -28,6 +29,12 @@ public class UsersDao {
 
         return instance;
     }
+
+    public void clearDatabase() {
+        setUsername(DEFAULT_USERNAME);
+        setPassword(DEFAULT_PASSWORD);
+    }
+
     /**
      * Checks to see whether the default username and password are being used.
      * 

@@ -33,6 +33,26 @@ public class SettingsDao {
         return instance;
     }
 
+    public void clearDatabase() {
+
+        GuiJdbcConnection guiJdbcConnection = new GuiJdbcConnection();
+        Connection connection = null;
+        Statement statement = null;
+        try {
+            statement = connection.createStatement();
+            String update = "DELETE FROM SETTINGS";
+            statement.executeUpdate(update);
+
+            update = "VACUUM";
+            statement.executeUpdate(update);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        } finally {
+            guiJdbcConnection.closeStatement(statement);
+            guiJdbcConnection.closeConnection(connection);
+        }
+
+    }
 
     /**
      * @param name

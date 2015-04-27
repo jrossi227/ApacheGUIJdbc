@@ -26,6 +26,33 @@ public class LogDataDao {
 
         return instance;
     }
+
+    public void clearDatabase() {
+
+        LogDataJdbcConnection logDataJdbcConnection = new LogDataJdbcConnection();
+        Connection connection = null;
+        Statement statement = null;
+        try {
+
+            connection = logDataJdbcConnection.getConnection();
+
+            statement = connection.createStatement();
+            String update = "DELETE FROM LOGDATA";
+            statement.executeUpdate(update);
+
+            update = "VACUUM";
+            statement.executeUpdate(update);
+
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        } finally {
+            logDataJdbcConnection.closeStatement(statement);
+            logDataJdbcConnection.closeConnection(connection);
+        }
+
+
+    }
+
     /**
      * Writes the log data directly to the database.
      * 
