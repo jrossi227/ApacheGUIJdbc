@@ -1,47 +1,36 @@
 package net.apachegui.db;
 
 
+import net.apachegui.locks.LockManager;
+import net.apachegui.locks.Operation;
 import org.apache.log4j.Logger;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.sql.*;
 
 public class JdbcConnection {
     private static Logger log = Logger.getLogger(JdbcConnection.class);
 
-    private static JdbcConnection instance = null;
-
     // locking fields
     private String lockName;
-    private FileChannel channel = null;
-    private FileLock lock = null;
 
-    public static JdbcConnection getInstance() {
+    private FileChannel readChannel = null;
+    private FileLock readLock = null;
 
-        synchronized (JdbcConnection.class) {
-            if(instance == null) {
-                synchronized (JdbcConnection.class) {
-                    instance = new JdbcConnection();
-                }
-            }
-        }
+    private FileChannel writeChannel = null;
+    private FileLock writeLock = null;
 
-        return instance;
-    }
+    Operation operation;
 
     private JdbcConnection() {
-        this.lockName = "Jdbc.lock";
+        operation = Operation.WRITE;
+        this.lockName = "jdbc.lock";
     }
 
     protected JdbcConnection(String lockName) {
+        operation = Operation.WRITE;
         this.lockName = lockName;
     }
 
@@ -49,14 +38,23 @@ public class JdbcConnection {
         String directory = System.getProperty("catalina.base");
         log.trace("Loading database from file: " + directory);
 
-        return directory;
+        return (new File(directory, "db")).getAbsolutePath();
     }
 
-    protected Connection getConnection(String dbName) {
+    protected Connection getConnection(String dbName, Operation operation) {
         Connection connection = null;
         try {
             Class.forName("org.sqlite.JDBC");
-            connection = DriverManager.getConnection("jdbc:sqlite:/" + new File(getDatabaseDirectory(), "db/" +  dbName).getAbsolutePath());
+            connection = DriverManager.getConnection("jdbc:sqlite:/" + new File(getDatabaseDirectory(),dbName).getAbsolutePath());
+
+            this.operation = operation;
+
+            String lockFile = new File(getDatabaseDirectory(),lockName).getAbsolutePath();
+            if(this.operation == Operation.WRITE) {
+                LockManager.getInstance().lockWrite(lockFile);
+            } else {
+                LockManager.getInstance().lockRead(lockFile);
+            }
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         }
@@ -91,8 +89,17 @@ public class JdbcConnection {
             if(connection != null && !connection.isClosed()) {
                 connection.close();
             }
+
         } catch (SQLException e) {
             log.error(e.getMessage(), e);
+        } finally {
+
+            String lockFile = new File(getDatabaseDirectory(),lockName).getAbsolutePath();
+            if(this.operation == Operation.WRITE) {
+                LockManager.getInstance().unlockWrite(lockFile);
+            } else {
+                LockManager.getInstance().unlockRead(lockFile);
+            }
         }
     }
 
@@ -104,50 +111,10 @@ public class JdbcConnection {
      * @throws InstantiationException
      * @throws ClassNotFoundException
      */
-    public void clearAllDatabases() {
+    public static void clearAllDatabases() {
         SettingsDao.getInstance().clearDatabase();
         LogDataDao.getInstance().clearDatabase();
         UsersDao.getInstance().clearDatabase();
-    }
-
-    public void readLock() throws IOException {
-
-        File file = new File(getDatabaseDirectory(), lockName);
-        if (!file.exists()) {
-            file.createNewFile();
-        }
-
-        Path path = Paths.get(file.getAbsolutePath());
-        channel = FileChannel.open(path, StandardOpenOption.READ);
-        lock = channel.lock(0, Long.MAX_VALUE, true);
-    }
-
-    public void writeLock() throws IOException {
-        File file = new File(getDatabaseDirectory(), lockName);
-        if (!file.exists()) {
-            file.createNewFile();
-        }
-
-        Path path = Paths.get(file.getAbsolutePath());
-        channel = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
-        lock = channel.lock();
-    }
-
-    public void releaseLock() {
-
-        try {
-            if( lock != null ) {
-                lock.release();
-                lock = null;
-            }
-
-            if( channel != null) {
-                channel.close();
-                channel = null;
-            }
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-        }
     }
 
 }

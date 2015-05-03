@@ -1,5 +1,6 @@
 package net.apachegui.db;
 
+import net.apachegui.locks.Operation;
 import org.apache.log4j.Logger;
 
 import java.sql.Connection;
@@ -16,8 +17,15 @@ public class SettingsDao {
 
     private static SettingsDao instance = null;
 
-    private SettingsDao() {
+    private HashMap<String,String> settingsMap;
 
+    private boolean cache;
+
+    private SettingsDao() {
+        cache = true;
+        settingsMap = new HashMap<String, String>();
+
+        getAllSettings();
     }
 
     public static SettingsDao getInstance() {
@@ -33,13 +41,21 @@ public class SettingsDao {
         return instance;
     }
 
+    public boolean isCache() {
+        return cache;
+    }
+
+    public void setCache(boolean cache) {
+        this.cache = cache;
+    }
+
     public void clearDatabase() {
 
         GuiJdbcConnection guiJdbcConnection = new GuiJdbcConnection();
         Connection connection = null;
         Statement statement = null;
         try {
-            connection = guiJdbcConnection.getConnection();
+            connection = guiJdbcConnection.getConnection(Operation.WRITE);
             statement = connection.createStatement();
 
             String update = "DELETE FROM SETTINGS";
@@ -47,13 +63,13 @@ public class SettingsDao {
 
             update = "VACUUM";
             statement.executeUpdate(update);
+            settingsMap.clear();
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         } finally {
             guiJdbcConnection.closeStatement(statement);
             guiJdbcConnection.closeConnection(connection);
         }
-
     }
 
     /**
@@ -68,6 +84,10 @@ public class SettingsDao {
     public String getSetting(String name) {
         log.trace("Getting setting " + name);
 
+        if(cache) {
+            return settingsMap.get(name);
+        }
+
         String value = null;
         GuiJdbcConnection guiJdbcConnection = new GuiJdbcConnection();
         Connection connection = null;
@@ -75,7 +95,7 @@ public class SettingsDao {
         ResultSet resultSet = null;
 
         try {
-            connection = guiJdbcConnection.getConnection();
+            connection = guiJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
 
             String query = "SELECT VALUE FROM " + SETTINGS_TABLE + " WHERE NAME='" + name + "'";
@@ -123,7 +143,7 @@ public class SettingsDao {
         ResultSet resultSet = null;
 
         try {
-            connection = guiJdbcConnection.getConnection();
+            connection = guiJdbcConnection.getConnection(Operation.WRITE);
             statement = connection.createStatement();
 
             String query = "SELECT VALUE FROM " + SETTINGS_TABLE + " WHERE NAME='" + name + "'";
@@ -137,6 +157,7 @@ public class SettingsDao {
             }
 
             statement.executeUpdate(update);
+            settingsMap.put(name, value);
 
         } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -155,21 +176,20 @@ public class SettingsDao {
     public HashMap<String, String> getAllSettings() {
         log.trace("Getting all Settings");
 
-        HashMap<String, String> values = new HashMap<String, String>();
-
         GuiJdbcConnection guiJdbcConnection = new GuiJdbcConnection();
         Connection connection = null;
         Statement statement =  null;
         ResultSet resultSet = null;
 
         try {
-            connection = guiJdbcConnection.getConnection();
+            connection = guiJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
             String query = "SELECT NAME,VALUE FROM " + SETTINGS_TABLE;
             resultSet = statement.executeQuery(query);
 
+            settingsMap.clear();
             while(resultSet.next()) {
-                values.put(resultSet.getString("NAME"), resultSet.getString("VALUE"));
+                settingsMap.put(resultSet.getString("NAME"), resultSet.getString("VALUE"));
             }
 
         } catch (Exception e) {
@@ -180,7 +200,7 @@ public class SettingsDao {
             guiJdbcConnection.closeConnection(connection);
         }
 
-        return values;
+        return settingsMap;
     }
 
 }

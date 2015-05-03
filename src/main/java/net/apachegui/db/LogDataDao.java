@@ -1,5 +1,6 @@
 package net.apachegui.db;
 
+import net.apachegui.locks.Operation;
 import org.apache.log4j.Logger;
 
 import java.sql.*;
@@ -33,7 +34,7 @@ public class LogDataDao {
         Connection connection = null;
         Statement statement = null;
         try {
-            connection = logDataJdbcConnection.getConnection();
+            connection = logDataJdbcConnection.getConnection(Operation.WRITE);
             statement = connection.createStatement();
 
             String update = "DELETE FROM LOGDATA";
@@ -65,7 +66,7 @@ public class LogDataDao {
         PreparedStatement preparedStatement =  null;
 
         try {
-            connection = logDataJdbcConnection.getConnection();
+            connection = logDataJdbcConnection.getConnection(Operation.WRITE);
 
             String update = "INSERT INTO " + LOG_TABLE + " (HOST,INSERTDATE,USERAGENT,REQUESTSTRING,STATUS,CONTENTSIZE) VALUES (?,?,?,?,?,?)";
             preparedStatement = connection.prepareStatement(update);
@@ -160,7 +161,7 @@ public class LogDataDao {
 
         List<LogData> logData = new ArrayList<LogData>();
         try {
-            connection = logDataJdbcConnection.getConnection();
+            connection = logDataJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
             resultSet = statement.executeQuery(query.toString());
 
@@ -248,7 +249,7 @@ public class LogDataDao {
         Statement statement =  null;
 
         try {
-            connection = logDataJdbcConnection.getConnection();
+            connection = logDataJdbcConnection.getConnection(Operation.WRITE);
             statement = connection.createStatement();
             statement.executeUpdate(update.toString());
 
@@ -281,7 +282,7 @@ public class LogDataDao {
         Statement statement =  null;
 
         try {
-            connection = logDataJdbcConnection.getConnection();
+            connection = logDataJdbcConnection.getConnection(Operation.WRITE);
             statement = connection.createStatement();
             statement.executeUpdate(update);
 
@@ -307,7 +308,7 @@ public class LogDataDao {
 
         int value = 0;
         try {
-            connection = logDataJdbcConnection.getConnection();
+            connection = logDataJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
 
             String query = "SELECT COUNT(INSERTDATE) AS NUMROWS FROM " + LOG_TABLE;
@@ -346,7 +347,7 @@ public class LogDataDao {
         long value = 0;
         Timestamp time = null;
         try {
-            connection = logDataJdbcConnection.getConnection();
+            connection = logDataJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
 
             String query = "SELECT MIN(INSERTDATE) AS MINTIME FROM " + LOG_TABLE;
@@ -388,7 +389,7 @@ public class LogDataDao {
         long value = 0;
         Timestamp time = null;
         try {
-            connection = logDataJdbcConnection.getConnection();
+            connection = logDataJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
 
             String query = "SELECT MAX(INSERTDATE) AS MAXTIME FROM " + LOG_TABLE;
@@ -492,7 +493,7 @@ public class LogDataDao {
         }
 
         try {
-            connection = logDataJdbcConnection.getConnection();
+            connection = logDataJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
             resultSet = statement.executeQuery(query.toString());
 
@@ -589,7 +590,7 @@ public class LogDataDao {
         }
 
         try {
-            connection = logDataJdbcConnection.getConnection();
+            connection = logDataJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
             resultSet = statement.executeQuery(query.toString());
 

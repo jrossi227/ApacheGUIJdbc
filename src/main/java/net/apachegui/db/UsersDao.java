@@ -1,5 +1,6 @@
 package net.apachegui.db;
 
+import net.apachegui.locks.Operation;
 import org.apache.log4j.Logger;
 
 import java.sql.Connection;
@@ -68,7 +69,7 @@ public class UsersDao {
 
         String username = "";
         try {
-            connection = guiJdbcConnection.getConnection();
+            connection = guiJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
 
             String query = "SELECT USER_NAME FROM " + USERS_TABLE;
@@ -103,7 +104,7 @@ public class UsersDao {
 
         String password = "";
         try {
-            connection = guiJdbcConnection.getConnection();
+            connection = guiJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
 
             String query = "SELECT USER_PASS FROM " + USERS_TABLE;
@@ -140,7 +141,7 @@ public class UsersDao {
         Statement statement =  null;
 
         try {
-            connection = guiJdbcConnection.getConnection();
+            connection = guiJdbcConnection.getConnection(Operation.WRITE);
             statement = connection.createStatement();
 
             String update = "UPDATE " + USERS_TABLE + " SET USER_NAME='" + newUsername + "' WHERE USER_NAME='" + currentUsername + "'";
@@ -175,7 +176,7 @@ public class UsersDao {
         Statement statement =  null;
 
         try {
-            connection = guiJdbcConnection.getConnection();
+            connection = guiJdbcConnection.getConnection(Operation.WRITE);
             statement = connection.createStatement();
 
             String update = "UPDATE " + USERS_TABLE + " SET USER_PASS='" + newPassword + "' WHERE USER_NAME='" + currentUsername + "'";
