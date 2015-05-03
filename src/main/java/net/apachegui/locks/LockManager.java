@@ -39,7 +39,7 @@ public class LockManager {
         return instance;
     }
 
-    private ReentrantReadWriteLock getJvmLockObject(String file) {
+    private synchronized ReentrantReadWriteLock getJvmLockObject(String file) {
 
         ReentrantReadWriteLock lock = jvmLocks.get(file);
         if (lock == null) {
@@ -53,7 +53,7 @@ public class LockManager {
         return lock;
     }
 
-    private FileLockTracker getFileLockTrackerObject(String file) {
+    private synchronized FileLockTracker getFileLockTrackerObject(String file) {
 
         FileLockTracker lock = fileLockTrackers.get(file);
         if (lock == null) {
@@ -88,7 +88,7 @@ public class LockManager {
         fileLockTracker.setLockNum(lockNum);
     }
 
-    public synchronized void lockRead(String file) throws IOException {
+    public void lockRead(String file) throws IOException {
         ReentrantReadWriteLock jvmLock = getJvmLockObject(file);
         jvmLock.readLock().lock();
 
@@ -111,60 +111,35 @@ public class LockManager {
 
     }
 
-    public synchronized void unlockRead(String file) {
+    public void unlockRead(String file) {
+        unlockFileTrackerLock(file);
+
         ReentrantReadWriteLock jvmLock = getJvmLockObject(file);
         jvmLock.readLock().unlock();
-
-        unlockFileTrackerLock(file);
     }
 
-    public synchronized void lockWrite(String file) throws IOException {
+    public void lockWrite(String file) throws IOException {
         ReentrantReadWriteLock jvmLock = getJvmLockObject(file);
         jvmLock.writeLock().lock();
 
         FileLockTracker fileLockTracker = getFileLockTrackerObject(file);
-        if(fileLockTracker.getLockNum() == 0) {
-            fileLockTracker.setLockNum(1);
+        fileLockTracker.setLockNum(1);
 
-            File fileObj = new File(file);
-            if (!fileObj.exists()) {
-                fileObj.createNewFile();
-            }
-
-            Path path = Paths.get(file);
-            fileLockTracker.setChannel(FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE));
-            fileLockTracker.setFileLock(fileLockTracker.getChannel().lock());
-
-        } else if(fileLockTracker.getCurrentOperation() == Operation.READ) {
-
-            try {
-                FileLock lock = fileLockTracker.getFileLock();
-                if( lock != null ) {
-                    lock.release();
-                }
-
-                FileChannel channel = fileLockTracker.getChannel();
-                if( channel != null) {
-                    channel.close();
-                }
-            } catch (Exception e) {
-                log.error(e.getMessage(), e);
-            }
-
-            Path path = Paths.get(file);
-            fileLockTracker.setChannel(FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE));
-            fileLockTracker.setFileLock(fileLockTracker.getChannel().lock());
-
-        } else {
-            fileLockTracker.setLockNum(fileLockTracker.getLockNum() + 1);
+        File fileObj = new File(file);
+        if (!fileObj.exists()) {
+            fileObj.createNewFile();
         }
+
+        Path path = Paths.get(file);
+        fileLockTracker.setChannel(FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE));
+        fileLockTracker.setFileLock(fileLockTracker.getChannel().lock());
     }
 
-    public synchronized void unlockWrite(String file) {
+    public void unlockWrite(String file) {
+        unlockFileTrackerLock(file);
+
         ReentrantReadWriteLock jvmLock = getJvmLockObject(file);
         jvmLock.writeLock().unlock();
-
-        unlockFileTrackerLock(file);
     }
 
 
