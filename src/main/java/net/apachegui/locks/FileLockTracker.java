@@ -1,7 +1,5 @@
 package net.apachegui.locks;
 
-import net.apachegui.db.JdbcConnection;
-
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 
