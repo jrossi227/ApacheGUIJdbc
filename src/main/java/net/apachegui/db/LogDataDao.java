@@ -67,6 +67,7 @@ public class LogDataDao {
 
         try {
             connection = logDataJdbcConnection.getConnection(Operation.WRITE);
+            connection.setAutoCommit(false);
 
             String update = "INSERT INTO " + LOG_TABLE + " (HOST,INSERTDATE,USERAGENT,REQUESTSTRING,STATUS,CONTENTSIZE) VALUES (?,?,?,?,?,?)";
             preparedStatement = connection.prepareStatement(update);
@@ -86,6 +87,7 @@ public class LogDataDao {
             }
 
             preparedStatement.executeBatch();
+            connection.commit();
 
         } catch (Exception e) {
             log.error(e.getMessage(), e);
