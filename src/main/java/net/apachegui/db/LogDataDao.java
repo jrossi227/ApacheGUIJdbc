@@ -119,7 +119,7 @@ public class LogDataDao {
      * @return an array of LogData results.
      * @throws SQLException
      */
-    public LogData[] queryLogData(Timestamp startDate, Timestamp endDate, String host, String userAgent, String requestString, String status, String contentSize, String maxResults)
+    public String generateLogDataQuery(Timestamp startDate, Timestamp endDate, String host, String userAgent, String requestString, String status, String contentSize, String maxResults)
             throws SQLException {
         log.trace("Entering queryLogData");
         log.trace("startDate " + startDate.toString());
@@ -132,30 +132,34 @@ public class LogDataDao {
         log.trace("maxResults " + maxResults);
         StringBuffer query = new StringBuffer();
 
-        query.append("SELECT * FROM " + LOG_TABLE + " WHERE INSERTDATE > " + startDate.getTime() + " AND INSERTDATE < " + endDate.getTime());
+        query.append("SELECT * \nFROM " + LOG_TABLE + " \nWHERE INSERTDATE > " + startDate.getTime() + " \nAND INSERTDATE < " + endDate.getTime());
         if (!host.equals("")) {
-            query.append(" AND UPPER(HOST) LIKE '%" + host.toUpperCase() + "%'");
+            query.append(" \nAND UPPER(HOST) LIKE '%" + host.toUpperCase() + "%'");
         }
 
         if (!userAgent.equals("")) {
-            query.append(" AND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
         }
 
         if (!requestString.equals("")) {
-            query.append(" AND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
         }
 
         if (!status.equals("")) {
-            query.append(" AND STATUS='" + status + "'");
+            query.append(" \nAND STATUS='" + status + "'");
         }
 
         if (!contentSize.equals("")) {
-            query.append(" AND CONTENTSIZE='" + contentSize + "'");
+            query.append(" \nAND CONTENTSIZE='" + contentSize + "'");
         }
 
-        query.append(" ORDER BY INSERTDATE DESC LIMIT " + maxResults);
+        query.append(" \nORDER BY INSERTDATE DESC LIMIT " + maxResults);
         log.trace("Query: " + query.toString());
 
+        return query.toString();
+    };
+
+    public LogData[] executeLogDataQuery(String query) throws Exception {
         LogDataJdbcConnection logDataJdbcConnection = new LogDataJdbcConnection();
         Connection connection = null;
         Statement statement =  null;
@@ -184,8 +188,6 @@ public class LogDataDao {
                 logData.add(new LogData(insertDateResult, hostResult, userAgentResult, requestStringResult, statusResult, contentSizeResult));
             }
 
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
         } finally {
             logDataJdbcConnection.closeResultSet(resultSet);
             logDataJdbcConnection.closeStatement(statement);
@@ -435,7 +437,7 @@ public class LogDataDao {
      *            - An integer with the desired contentSize. The supplied contentSize must exactly match the status in the database. Can be left blank if its not required.
      * @return an array with length 24 which has the amount of entries per hour.
      */
-    public int[] getDailyReportByHour(Timestamp date, String host, String userAgent, String requestString, String status, String contentSize) throws Exception {
+    public String generateDailyReportByHourQuery(Timestamp date, String host, String userAgent, String requestString, String status, String contentSize) throws Exception {
         // select h, count(*) as NUM from (select hour(INSERTDATE) from LOGDATA WHERE INSERTDATE < TIMESTAMP('2011-12-23 00:00:00.0') AND INSERTDATE > TIMESTAMP('2011-12-22 00:00:00.0')) as t(h) group
         // by h;
         log.trace("Entering getDailyReportByHour");
@@ -459,30 +461,35 @@ public class LogDataDao {
 
         StringBuffer query = new StringBuffer();
 
-        query.append("SELECT h, count(*) as NUM from (SELECT strftime('%H',datetime(INSERTDATE, 'unixepoch', 'localtime')) as h FROM " + LOG_TABLE + " WHERE INSERTDATE < " + futureTime.getTime()
-                + " AND INSERTDATE > " + currentTime.getTime());
+        query.append("SELECT h, \ncount(*) as NUM \nfrom (\nSELECT strftime('%H',datetime(\nINSERTDATE\n, 'unixepoch'\n, 'localtime'\n)) as h \nFROM " + LOG_TABLE + " \nWHERE INSERTDATE < " + futureTime.getTime()
+                + " \nAND INSERTDATE > " + currentTime.getTime());
         if (!host.equals("")) {
-            query.append(" AND UPPER(HOST) LIKE '%" + host.toUpperCase() + "%'");
+            query.append(" \nAND UPPER(HOST) LIKE '%" + host.toUpperCase() + "%'");
         }
 
         if (!userAgent.equals("")) {
-            query.append(" AND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
         }
 
         if (!requestString.equals("")) {
-            query.append(" AND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
         }
 
         if (!status.equals("")) {
-            query.append(" AND STATUS='" + status + "'");
+            query.append(" \nAND STATUS='" + status + "'");
         }
 
         if (!contentSize.equals("")) {
-            query.append(" AND CONTENTSIZE='" + contentSize + "'");
+            query.append(" \nAND CONTENTSIZE='" + contentSize + "'");
         }
 
-        query.append(") group by h");
+        query.append("\n) \ngroup by h");
         log.trace("Query: " + query.toString());
+
+       return query.toString();
+    }
+
+    public int[] executeDailyReportByHourQuery(String query) throws SQLException {
 
         LogDataJdbcConnection logDataJdbcConnection = new LogDataJdbcConnection();
         Connection connection = null;
@@ -497,14 +504,12 @@ public class LogDataDao {
         try {
             connection = logDataJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
-            resultSet = statement.executeQuery(query.toString());
+            resultSet = statement.executeQuery(query);
 
             while(resultSet.next()) {
                 hourCount[resultSet.getInt("h")] = resultSet.getInt("NUM");
             }
 
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
         } finally {
             logDataJdbcConnection.closeResultSet(resultSet);
             logDataJdbcConnection.closeStatement(statement);
@@ -513,6 +518,7 @@ public class LogDataDao {
 
         return hourCount;
     }
+
 
     /**
      * Gets the total amount of transactions per day per month. The 0 position in the returned array should not be used.
@@ -531,7 +537,7 @@ public class LogDataDao {
      *            - An integer with the desired contentSize. The supplied contentSize must exactly match the status in the database. Can be left blank if its not required.
      * @return an array with length that matches the amount of the days in the month +1. Each position has the amount of entries per day. The days start at 1 so position 0 is not used.
      */
-    public int[] getMonthlyReportByDay(Timestamp date, String host, String userAgent, String requestString, String status, String contentSize) throws Exception {
+    public String generateMonthlyReportByDayQuery(Timestamp date, String host, String userAgent, String requestString, String status, String contentSize) throws Exception {
         log.trace("Entering getDailyReportByHour");
         log.trace("date " + date.toString());
         log.trace("host " + host);
@@ -549,36 +555,49 @@ public class LogDataDao {
         tempPresent.set(Calendar.SECOND, 0);
         tempPresent.set(Calendar.MILLISECOND, 0);
         currentTime.setTime(tempPresent.getTimeInMillis());
-        int numOfdaysInMonth = tempPresent.getActualMaximum(Calendar.DAY_OF_MONTH);
         tempPresent.add(Calendar.MONTH, 1);
         Timestamp futureTime = new Timestamp(tempPresent.getTimeInMillis());
 
         StringBuffer query = new StringBuffer();
 
-        query.append("SELECT d, count(*) as NUM from (SELECT strftime('%d',datetime(INSERTDATE, 'unixepoch', 'localtime')) as d FROM " + LOG_TABLE + " WHERE INSERTDATE < " + futureTime.getTime()
-                + " AND INSERTDATE > " + currentTime.getTime());
+        query.append("SELECT d, \ncount(*) as NUM \nfrom (\nSELECT strftime('%d',datetime(\nINSERTDATE\n, 'unixepoch'\n, 'localtime'\n)) as h \nFROM " + LOG_TABLE + " \nWHERE INSERTDATE < " + futureTime.getTime()
+                + " \nAND INSERTDATE > " + currentTime.getTime());
         if (!host.equals("")) {
-            query.append(" AND UPPER(HOST) LIKE '%" + host.toUpperCase() + "%'");
+            query.append(" \nAND UPPER(HOST) LIKE '%" + host.toUpperCase() + "%'");
         }
 
         if (!userAgent.equals("")) {
-            query.append(" AND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
         }
 
         if (!requestString.equals("")) {
-            query.append(" AND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
         }
 
         if (!status.equals("")) {
-            query.append(" AND STATUS='" + status + "'");
+            query.append(" \nAND STATUS='" + status + "'");
         }
 
         if (!contentSize.equals("")) {
-            query.append(" AND CONTENTSIZE='" + contentSize + "'");
+            query.append(" \nAND CONTENTSIZE='" + contentSize + "'");
         }
 
-        query.append(") group by d");
+        query.append("\n) \ngroup by d");
         log.trace("Query: " + query.toString());
+
+        return query.toString();
+    }
+
+    public int[] executeMonthlyReportByDayQuery(String query, Timestamp date) throws Exception {
+
+        Calendar tempPresent = Calendar.getInstance();
+        tempPresent.setTimeInMillis(date.getTime() * 1000);
+        tempPresent.set(Calendar.DAY_OF_MONTH, 1);
+        tempPresent.set(Calendar.HOUR_OF_DAY, 0);
+        tempPresent.set(Calendar.MINUTE, 0);
+        tempPresent.set(Calendar.SECOND, 0);
+        tempPresent.set(Calendar.MILLISECOND, 0);
+        int numOfdaysInMonth = tempPresent.getActualMaximum(Calendar.DAY_OF_MONTH);
 
         LogDataJdbcConnection logDataJdbcConnection = new LogDataJdbcConnection();
         Connection connection = null;
@@ -594,14 +613,12 @@ public class LogDataDao {
         try {
             connection = logDataJdbcConnection.getConnection(Operation.READ);
             statement = connection.createStatement();
-            resultSet = statement.executeQuery(query.toString());
+            resultSet = statement.executeQuery(query);
 
             while(resultSet.next()) {
                 dayCount[resultSet.getInt("d")] = resultSet.getInt("NUM");
             }
 
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
         } finally {
             logDataJdbcConnection.closeResultSet(resultSet);
             logDataJdbcConnection.closeStatement(statement);
