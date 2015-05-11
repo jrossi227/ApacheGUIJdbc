@@ -90,38 +90,40 @@ public class LockManager {
         return lock;
     }
 
-    private void unlockFileTrackerLock(String file) {
-
-        FileLockTracker fileLockTracker = getFileLockTrackerObject(file);
-        int lockNum = fileLockTracker.getLockNum() - 1;
-        if (lockNum == 0) {
-            try {
-                FileLock lock = fileLockTracker.getFileLock();
-                if (lock != null) {
-                    lock.release();
-                }
-
-                FileChannel channel = fileLockTracker.getChannel();
-                if (channel != null) {
-                    channel.close();
-                }
-            }
-            catch (Exception e) {
-                log.error(e.getMessage(), e);
-            }
-        }
-        fileLockTracker.setLockNum(lockNum);
-    }
-
-    public void lockRead(String file) throws IOException {
-
-        ReentrantReadWriteLock jvmLock = getJvmLockObject(file);
-        jvmLock.readLock().lock();
-
+    private void unlockFile(String file) {
         ReentrantReadWriteLock localLock = getLocalLockObject(file);
         localLock.writeLock().lock();
-        try
-        {
+        try {
+            FileLockTracker fileLockTracker = getFileLockTrackerObject(file);
+            int lockNum = fileLockTracker.getLockNum() - 1;
+            if (lockNum == 0) {
+                try {
+                    FileLock lock = fileLockTracker.getFileLock();
+                    if (lock != null) {
+                        lock.release();
+                    }
+
+                    FileChannel channel = fileLockTracker.getChannel();
+                    if (channel != null) {
+                        channel.close();
+                    }
+                }
+                catch (Exception e) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+            fileLockTracker.setLockNum(lockNum);
+            fileLockTrackers.put(file, fileLockTracker);
+        } finally {
+            localLock.writeLock().unlock();
+        }
+    }
+
+    private void lockFile(String file, Operation operation) throws IOException
+    {
+        ReentrantReadWriteLock localLock = getLocalLockObject(file);
+        localLock.writeLock().lock();
+        try {
             FileLockTracker fileLockTracker = getFileLockTrackerObject(file);
             if (fileLockTracker.getLockNum() == 0) {
                 fileLockTracker.setLockNum(1);
@@ -132,26 +134,34 @@ public class LockManager {
                 }
 
                 Path path = Paths.get(file);
-                fileLockTracker.setChannel(FileChannel.open(path, StandardOpenOption.READ));
-                fileLockTracker.setFileLock(fileLockTracker.getChannel().lock(0, Long.MAX_VALUE, true));
-
+                if(operation == Operation.READ) {
+                    fileLockTracker.setChannel(FileChannel.open(path, StandardOpenOption.READ));
+                    fileLockTracker.setFileLock(fileLockTracker.getChannel().lock(0, Long.MAX_VALUE, true));
+                } else {
+                    fileLockTracker.setChannel(FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE));
+                    fileLockTracker.setFileLock(fileLockTracker.getChannel().lock());
+                }
             }
             else {
                 fileLockTracker.setLockNum(fileLockTracker.getLockNum() + 1);
             }
+
+            fileLockTrackers.put(file, fileLockTracker);
         } finally {
             localLock.writeLock().unlock();
         }
     }
 
+    public void lockRead(String file) throws IOException {
+
+        ReentrantReadWriteLock jvmLock = getJvmLockObject(file);
+        jvmLock.readLock().lock();
+
+        lockFile(file, Operation.READ);
+    }
+
     public void unlockRead(String file) {
-        ReentrantReadWriteLock localLock = getLocalLockObject(file);
-        localLock.writeLock().lock();
-        try {
-            unlockFileTrackerLock(file);
-        } finally {
-            localLock.writeLock().unlock();
-        }
+        unlockFile(file);
 
         ReentrantReadWriteLock jvmLock = getJvmLockObject(file);
         jvmLock.readLock().unlock();
@@ -161,34 +171,11 @@ public class LockManager {
         ReentrantReadWriteLock jvmLock = getJvmLockObject(file);
         jvmLock.writeLock().lock();
 
-        ReentrantReadWriteLock localLock = getLocalLockObject(file);
-        localLock.writeLock().lock();
-        try {
-
-            FileLockTracker fileLockTracker = getFileLockTrackerObject(file);
-            fileLockTracker.setLockNum(1);
-
-            File fileObj = new File(file);
-            if (!fileObj.exists()) {
-                fileObj.createNewFile();
-            }
-
-            Path path = Paths.get(file);
-            fileLockTracker.setChannel(FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE));
-            fileLockTracker.setFileLock(fileLockTracker.getChannel().lock());
-        } finally {
-            localLock.writeLock().unlock();
-        }
+        lockFile(file, Operation.WRITE);
     }
 
     public void unlockWrite(String file) {
-        ReentrantReadWriteLock localLock = getLocalLockObject(file);
-        localLock.writeLock().lock();
-        try {
-            unlockFileTrackerLock(file);
-        } finally {
-            localLock.writeLock().unlock();
-        }
+        unlockFile(file);
 
         ReentrantReadWriteLock jvmLock = getJvmLockObject(file);
         jvmLock.writeLock().unlock();
