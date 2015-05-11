@@ -43,11 +43,8 @@ public class LockManager {
 
         ReentrantReadWriteLock lock = jvmLocks.get(file);
         if (lock == null) {
-            lock = jvmLocks.get(file);
-            if (lock == null) {
-                lock = new ReentrantReadWriteLock();
-                jvmLocks.put(file, lock);
-            }
+            lock = new ReentrantReadWriteLock();
+            jvmLocks.put(file, lock);
         }
 
         return lock;
@@ -57,11 +54,8 @@ public class LockManager {
 
         FileLockTracker lock = fileLockTrackers.get(file);
         if (lock == null) {
-            lock = fileLockTrackers.get(file);
-            if (lock == null) {
-                lock = new FileLockTracker(file);
-                fileLockTrackers.put(file, lock);
-            }
+            lock = new FileLockTracker(file);
+            fileLockTrackers.put(file, lock);
         }
 
         return lock;
