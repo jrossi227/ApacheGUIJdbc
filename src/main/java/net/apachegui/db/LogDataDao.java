@@ -138,11 +138,11 @@ public class LogDataDao {
         }
 
         if (!userAgent.equals("")) {
-            query.append(" \nAND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase() + "%'");
         }
 
         if (!requestString.equals("")) {
-            query.append(" \nAND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase() + "%'");
         }
 
         if (!status.equals("")) {
@@ -198,23 +198,16 @@ public class LogDataDao {
     }
 
     /**
-     * 
-     * @param startDate
-     *            - The start date to query. This value is required.
-     * @param endDate
-     *            - The end date to query. This value is required.
-     * @param host
-     *            - The host to query. The supplied host can be a substring and is not case sensitive. Can be left blank if its not required.
-     * @param userAgent
-     *            - The userAgent to query. The supplied user agent can be a substring and is not case sensitive. Can be left blank if its not required.
-     * @param requestString
-     *            - The request String to query. The supplied request string can be a substring and is not case sensitive. Can be left blank if its not required.
-     * @param status
-     *            - An integer with the desired status. The supplied status must exactly match the status in the database. Can be left blank if its not required.
-     * @param contentSize
-     *            - An integer with the desired contentSize. The supplied contentSize must exactly match the status in the database. Can be left blank if its not required.
+     * @param startDate     The start date to query. This value is required.
+     * @param endDate       The end date to query. This value is required.
+     * @param host          The host to query. The supplied host can be a substring and is not case sensitive. Can be left blank if its not required.
+     * @param userAgent     The userAgent to query. The supplied user agent can be a substring and is not case sensitive. Can be left blank if its not required.
+     * @param requestString The request String to query. The supplied request string can be a substring and is not case sensitive. Can be left blank if its not required.
+     * @param status        An integer with the desired status. The supplied status must exactly match the status in the database. Can be left blank if its not required.
+     * @param contentSize   An integer with the desired contentSize. The supplied contentSize must exactly match the status in the database. Can be left blank if its not required.
+     * @return a String with the update query
      */
-    public void deleteLogData(Timestamp startDate, Timestamp endDate, String host, String userAgent, String requestString, String status, String contentSize) {
+    public String generateDeleteLogDataUpdate(Timestamp startDate, Timestamp endDate, String host, String userAgent, String requestString, String status, String contentSize) {
         log.trace("Entering deleteLogData");
         log.trace("startDate " + startDate.toString());
         log.trace("endDate " + endDate.toString());
@@ -224,29 +217,34 @@ public class LogDataDao {
         log.trace("status " + status);
         log.trace("contentSize " + contentSize);
         StringBuffer update = new StringBuffer();
-        update.append("DELETE FROM " + LOG_TABLE + " WHERE INSERTDATE > " + startDate.getTime() + " AND INSERTDATE < " + endDate.getTime());
+        update.append("DELETE FROM " + LOG_TABLE + " \nWHERE INSERTDATE > " + startDate.getTime() + " \nAND INSERTDATE < " + endDate.getTime());
 
         if (!host.equals("")) {
-            update.append(" AND UPPER(HOST) LIKE '%" + host.toUpperCase() + "%'");
+            update.append(" \nAND UPPER(HOST) LIKE '%" + host.toUpperCase() + "%'");
         }
 
         if (!userAgent.equals("")) {
-            update.append(" AND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            update.append(" \nAND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase() + "%'");
         }
 
         if (!requestString.equals("")) {
-            update.append(" AND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            update.append(" \nAND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase() + "%'");
         }
 
         if (!status.equals("")) {
-            update.append(" AND STATUS='" + status + "'");
+            update.append(" \nAND STATUS='" + status + "'");
         }
 
         if (!contentSize.equals("")) {
-            update.append(" AND CONTENTSIZE='" + contentSize + "'");
+            update.append(" \nAND CONTENTSIZE='" + contentSize + "'");
         }
 
         log.trace("Update: " + update.toString());
+
+        return update.toString();
+    }
+
+    public void executeDeleteLogDataUpdate(String update) {
 
         LogDataJdbcConnection logDataJdbcConnection = new LogDataJdbcConnection();
         Connection connection = null;
@@ -255,7 +253,7 @@ public class LogDataDao {
         try {
             connection = logDataJdbcConnection.getConnection(Operation.WRITE);
             statement = connection.createStatement();
-            statement.executeUpdate(update.toString());
+            statement.executeUpdate(update);
 
         } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -468,11 +466,11 @@ public class LogDataDao {
         }
 
         if (!userAgent.equals("")) {
-            query.append(" \nAND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase() + "%'");
         }
 
         if (!requestString.equals("")) {
-            query.append(" \nAND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase() + "%'");
         }
 
         if (!status.equals("")) {
@@ -560,18 +558,18 @@ public class LogDataDao {
 
         StringBuffer query = new StringBuffer();
 
-        query.append("SELECT d, \ncount(*) as NUM \nfrom (\nSELECT strftime('%d',datetime(\nINSERTDATE\n, 'unixepoch'\n, 'localtime'\n)) as h \nFROM " + LOG_TABLE + " \nWHERE INSERTDATE < " + futureTime.getTime()
+        query.append("SELECT d, \ncount(*) as NUM \nfrom (\nSELECT strftime('%d',datetime(\nINSERTDATE\n, 'unixepoch'\n, 'localtime'\n)) as d \nFROM " + LOG_TABLE + " \nWHERE INSERTDATE < " + futureTime.getTime()
                 + " \nAND INSERTDATE > " + currentTime.getTime());
         if (!host.equals("")) {
             query.append(" \nAND UPPER(HOST) LIKE '%" + host.toUpperCase() + "%'");
         }
 
         if (!userAgent.equals("")) {
-            query.append(" \nAND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(USERAGENT) LIKE '%" + userAgent.toUpperCase() + "%'");
         }
 
         if (!requestString.equals("")) {
-            query.append(" \nAND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase().replaceAll("%", "@%").replaceAll("_", "@_") + "%'  {escape '@'}");
+            query.append(" \nAND UPPER(REQUESTSTRING) LIKE '%" + requestString.toUpperCase() + "%'");
         }
 
         if (!status.equals("")) {
