@@ -244,7 +244,7 @@ public class LogDataDao {
         return update.toString();
     }
 
-    public void executeDeleteLogDataUpdate(String update) {
+    public void executeDeleteLogDataUpdate(String update) throws SQLException {
 
         LogDataJdbcConnection logDataJdbcConnection = new LogDataJdbcConnection();
         Connection connection = null;
@@ -255,8 +255,6 @@ public class LogDataDao {
             statement = connection.createStatement();
             statement.executeUpdate(update);
 
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
         } finally {
             logDataJdbcConnection.closeStatement(statement);
             logDataJdbcConnection.closeConnection(connection);
